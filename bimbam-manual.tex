@@ -1,0 +1,1108 @@
+%! program = pdflatex
+
+\documentclass[11pt,Palatino]{article}
+%\usepackage{amsmath, amsfonts, amsthm}
+%\usepackage{enumerate}
+%\usepackage{geometry,hyperref} % see geometry.pdf on how to lay out the page. There's lots.
+%\geometry{a4paper} % or letter or a5paper or ... etc
+% \geometry{landscape} % rotated page geometry
+\usepackage{color, url}
+\usepackage{natbib}
+
+\usepackage{geometry}
+\geometry{top=1in, bottom=1.5in, left=1.in, right=1.in}
+
+
+\title{ {BIMBAM user manual}}
+\author{Yongtao Guan and Matthew Stephens\\Baylor College of Medicine and University of Chicago}
+\date{Version 1.0 \\Revised on 25 June 2015} % delete this line to display the current date
+\oddsidemargin 0.0in
+\textwidth 6.5in
+
+\def\bimbam{{\sc bimbam}~}
+\def\tcb{\textcolor{blue}}
+
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\clearpage
+
+\section{Copyright}
+
+\indent \bimbam --- Bayesian imputation based association mapping.
+    Copyright (C) 2008--2015 Yongtao Guan and Matthew Stephens.  
+\begin{verbatim}
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+    See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see http://www.gnu.org/licenses/.
+\end{verbatim}
+
+
+\section*{What BIMBAM can do}
+\begin{itemize}
+\itemsep -0.05in
+\item {\sc Imputation:} to fill in missing genotypes or untyped genotypes. The output can be genotype distribution (-wgd), mean genotype (-wmg), or best guess genotypes (-wbg). However, mean genotypes are recommended for computing Bayes factors.
+\begin{itemize}
+\itemsep -0.02in
+\item Take the panel (e.g. HapMap) and cohort (study sample genotypes) as input. This mainly uses LD information in the dense genotyped panel.
+\item Take the cohort alone as input. This only uses LD information in the cohort genotypes.
+
+\end{itemize}
+\item {\sc Single-SNP sssociation:} to compute single SNP Bayes factors.
+The input files can be either raw genotype (with/without missing values), mean genotype, or genotype distributions.  
+\begin{itemize}
+\itemsep -0.02in
+\item For quantitative phenotypes, compute single SNP Bayes factors for each SNP.  The priors of additive and dominant effect sizes can be specified by users (-A, -D, -df).
+\item For binary phenotypes, compute single SNP Bayes factors for each SNP via Laplace approximation for logistic regression (-cc).  
+\item Compute p-values for each SNP via permutation of phenotypes (-pval).
+\item Compute single-SNP Bayes factors using importance sampling for imputed genotypes (-i). Warning: computation intensive.
+\end{itemize}
+\item {\sc Multi-SNP sssociation:} to compute multi-SNP Bayes factors.
+The input can be either mean genotypes or genotype distributions.
+\begin{itemize}
+\itemsep -0.02in
+\item This shall be used only for candidate gene studies, because it exhaustively goes through all possible combinations of SNPs with specified maximum number of SNPs (-l).  
+\end{itemize}
+
+\item {\sc Combine studies using SNP summary data}
+\begin{itemize}
+\itemsep -0.02in
+\item Produce SNP summary data (-psd).
+\item Use SNP summary data to compute single SNP Bayes factors (-ssd).
+\end{itemize}
+
+\item {\sc Genotype manipulation}
+\begin{itemize}
+\itemsep -0.02in
+\item Exclude SNPs based on missing proption, or minor allele frequencies, or if SNPs have an entry in position files (-exclude-miss, -exclude-maf, -exclude-nopos).
+%whose missing proportion is larger than a user specified threshold (-exclude-miss).
+%\item Exclude SNPs whose minor allele frequency is smaller than a user specified threshold (-exclude-maf).
+%\item Exclude SNPs that do not have a position (-exclude-nopos).
+\item Specify a genomic region and only keep SNPs in the region (-gene, -gf).
+\item Write exact numerically coded genotypes without imputation with missing genotypes denoted by NA (-weg).
+\item Support non-genotype file, for example, microarray intensity data (-notsnp).
+\end{itemize}
+\end{itemize}
+
+%\tcb{
+%\section{What's new in this release version 0.99}
+%\subsection{New features}
+%\begin{itemize}
+%\item Support genotype distributions and mean genotypes as input genotype files via gmode option.
+%\item Support non-genotype file, for example, microarray intensity data, also via gmode option.
+%\item New data management functions, exclude SNPs according to missing proportion, minor allele frequency, wether SNPs have entries in position file.  
+%\item New options for writing mean genotypes and genotype distributions, so that one can choose to write cohort SNPs only, or write both cohort and panel SNPs.   
+%\end{itemize}
+%}
+
+
+\def\citeN{\cite}
+\section{Introduction}
+
+\bimbam implements methods for ``Bayesian IMputation-Based Association Mapping". It is suitable for single-SNP analyses of large studies (e.g.~genome scans) and multi-SNP analyses of smaller studies (candidate regions or genes). The software is written by Yongtao Guan, based on work from \cite{scheet.stephens.06} and \citeN{servin.stephens.07} and \citeN{guan.stephens.08}. Users of the software are assumed to be somewhat familiar with the papers of \cite{servin.stephens.07} and \cite{guan.stephens.08}.  Examples of applying \bimbam to data analysis can be found in \citeN{reiner.etal.08} and \citeN{barber.etal.10}. 
+
+Please send bug reports and requests for help to \url{ bimbam_help@googlegroups.com}.
+Before sending a request check out \url{http://groups.google.com/group/bimbam_help} to see if someone else has already asked the same question.
+{If you use \bimbam for imputation, please cite \cite{scheet.stephens.06}. If you use \bimbam for association mapping, please cite \cite{servin.stephens.07}. For practical issues, please cite \cite{guan.stephens.08}.}  %\cite{servin.stephens.07}.
+
+%To briefly explain the rationale for imputation-based methods, consider the ``tag-SNP" design for association studies, where SNPs are first identified (e.g. by resequencing) in a panel of individuals, and then a subset of these SNPs (``tags") are typed in the study sample. The imputation-based approach exploits the fact that tag SNPs are often good predictors for the other (non-tag) SNPs, to first ``impute" the genotypes of all individuals at all non-tag SNPs, and then assesses the strength of the association between the imputed genotypes and the phenotype. The idea is that this both improves power to detect associations, and interpretability of results (by assessing which SNPs, both tag and non-tag, are the best candidates for causally affecting the phenotype).
+%
+%Imputation-based methods are also extremely helpful in combining data from multiple studies that have typed different SNPs in the same region (e.g.~genome-wide scans using different genotyping platforms). Here, the idea is to use known patterns of correlation among the two sets of markers (e.g.~from the HapMap data) to impute genotypes at all markers in all individuals, allowing the data from both studies to be used when assessing correlation between phenotype and each marker.
+
+%\bimbam can compute single-SNP Bayes Factors (BFs) for each SNP and multi-SNP BFs for combinations of SNPs. The latter allows one to assess the potential that multiple SNPs in a data sets are combining to influence phenotype, and is intended for use in small genomic regions (e.g.~candidate genes). The imputation is performed using the algorithm documented in fastPHASE. %\cite{scheet.stephens.06}.
+
+\subsection{The model}
+Bayes Factors are computed under linear or logistic regression of phenotypes on genotypes. Specifically, for quantitative phenotypes
+the BFs are computed under the model
+\begin{equation}
+Y_i = \mu + a X_i + d I(X_i =1) + \epsilon_i
+\end{equation}
+where $Y_i$ denotes the phenotype for individual $i$, $X_i$ denotes the genotype for individual $i$
+(coded as 0, 1 or 2), $a$ denotes the additive effect, $d$ denotes the dominance effect, and $\epsilon_i$ denotes
+an error term (assumed to be iid normal). The BFs are computed using the prior D2 from \cite{servin.stephens.07}, averaging
+over $\sigma_a = 0.05,0.1,0.2,0.4$ and $\sigma_d = \sigma_a/4$.
+
+Similarly, for binary (0/1) phentypes the BFs are computed under
+a logistic regression model,
+\begin{equation}
+\log(\Pr(Y_i=1)/\Pr(Y_i=0)) = \mu + a X_i + d I(X_i = 1).
+\end{equation}
+The BFs are computed under the same priors for $\mu, a$ and $d$ as in prior D2 from \cite{servin.stephens.07},
+using a Laplace approximation to perform the necessary integration.
+
+Note that the above models are both ``prospective",
+and so BFs computed from these models are appropriate for prospective studies, but not strictly
+appropriate for retrospective designs (e.g.~case-control designs, or where genotype data are collected
+on individuals whose quantitative phenotypes lie in the tails of the population distribution).
+Most published analyses of case-control designs use prospective models, and is known that,
+asymptotically, maximum likelihood parameter estimates based on these models converge to
+the correct values.
+For typed SNPs, results from \citeN{seaman.richardson.04} provide conditions for the equivalence of prospective and retrospective Bayesian analysis. Although these results do not apply directly to imputed SNPs, we anticipate that even for these SNPs, using BFs from prospective models to analyse case-control data will not be grossly misleading.
+
+%However obtaining corresponding theoretical results for BFs is not straightforward. Our expectation
+%is that , and we note that BFs based on prospective models
+%were used in the analysis of the recent Wellcome Trust Case-Control Consortium genome scans. However,
+%as far as we are aware, no detailed study of this issue has yet been performed.
+
+\subsection{Transforming quantitative traits}
+
+For quantitative traits
+an important assumption underlying the methods implemented in \bimbam
+is that the phenotype has a normal distribution within each genotype class.
+Based on unpublished data (M Barber and M Stephens) we suggest using a normal quantile transformation
+to transform the phenotype to be normal before running \bimbam. For example, in {\tt R}, this can
+be accomplished using {\tt xtransformed = qqnorm(x,plot.it =F)\$x}.
+
+This quantile transformation does not
+fully solve the problem (it ensures that the phenotype is normal overall, but not necessarily
+normal within each genotype class). However, with the small effect sizes typical
+in genetic assocation studies it appears to be a simple sensible way to guard against
+strong departures from modelling assumptions. If you have other covariates
+that may be important predictors of phenotype (e.g.~Age, Sex) we suggest first regressing
+the phenotype on these covariates using standard multiple linear regression software, and then
+running \bimbam on the residuals from this regression (after applying a normal quantile transformation
+to these residuals).
+
+\section{Input file formats}
+
+In most cases, the users must supply two input files: a genotype file and a phenotype file. Optionally, a SNP location file can also be specified (if this is missing then the physical locations of the SNPs will be assumed to be in the same order as they occur in the Genotype file). If data are available on multiple chromosomes, we suggest analyzing each chromosome separately.
+
+Notes on input file conventions:
+\begin{enumerate}
+\item Input files should be saved as plain text files.
+\item The input files can be comma-delimited, space-delimited, tab-delimited, and semi-colon delimited, or mixed use of those. (i.e. entries can be separated by commas, spaces, semi-colons or tabs).
+\item All input files can contain empty lines, and comment lines: lines starting with \# are ignored by \bimbam.
+\end{enumerate}
+The following sections describe the format of each input file in more detail. The software distribution also includes example
+files ({\tt test.geno.txt, test.pheno.txt} etc.) in the {\tt input} subdirectory.
+
+\subsection{Basic genotype file format}
+Here is an example of basic genotype file, with 5 individuals and 4 SNPs:
+\begin{verbatim}
+5
+4
+IND, id1, id2, id3, id4, id5
+rs1, AT, TT, ??, AT, AA
+rs2, GG, CC, GG, CC, CG
+rs3, CC, ??, ??, CG, GG
+rs4, AC, CC, AA, AC, AA
+\end{verbatim}
+Genotypes should be for bi-allelic SNPs, all on the same chromosome. 
+%The first two lines should each contain a single number. 
+The number on the first line indicates the number of individuals; the number in the second line indicates the number of SNPs. Optionally, the third row can contain individual ID: this line should begin with the string IND, with subsequent strings indicating the identifier for each individual in turn. 
+Subsequent rows contain the genotype data for each SNP, with one row per SNP. In each row the first column gives the SNP ID (which can be any string, but might typically be an rs number), and subsequent columns give the genotypes for each individual in turn. Genotypes must be coded in ACGT while missing genotypes can be indicated by NN or ??.
+
+Note that plink can convert genotype files from plink format to bimbam format. The option is {\tt --recode-bimbam}. 
+
+\subsection{Phased genotype file format}
+By default \bimbam assumes that the genotypes in the basic genotype file are {\it unphased}. If one has data where the phase
+information is known, or can be accurately estimated (e.g. from trio data, as in the HapMap data), then this can be specified
+by putting an ``=" sign at the end of the first line, after the number of individuals. In this case, the order of the two alleles in
+each genotype becomes significant: the first allele of each genotype should correspond to the alleles along one haplotype, and the second allele of
+each genotype should correspond to the alleles along the other haplotype. For example, in the following input file, the
+haplotypes of the first individual are AGCA and TCCC:
+\begin{verbatim}
+5 =
+4
+IND, id1, id2, id3, id4, id5
+rs1, AT, TT, ??, AT, AA
+rs2, GC, CC, GG, CC, CG
+rs3, CC, ??, ??, CG, GG
+rs4, AC, CC, AA, AC, AA
+\end{verbatim}
+{Note:} accidentally treating phased data as unphased is less harmful than accidentally treating unphased panel as phased, so make sure it is phased genotype before you put ``=" sign!
+
+\subsection{Mean genotype file format}
+%If you want \bimbam to output a summary of the imputed genotypes, use either {\tt -wmg} or {\tt -wgd}.
+%The option {\tt -wmg} will cause \bimbam to produce an additional output file {\tt prefix.mean.genotype.txt}.
+This file has a \emph{different} form from the genotype input file.  There are no number of individual line or number of SNPs line. The first column of the mean genotype files is the SNP ID, the second and third columns are allele types with minor allele first. The rest columns are the mean genotypes of different individuals -- numbers between 0 and 2 that represents the (posterior) mean genotype, 
+or dosage of the minor allele.  
+%where genotypes 0,1 and 2 denote the number of copies of the minor allele 
+%(where the minor allele at each SNP is determined from those individuals for whom genotype data are available).
+An example of mean genotypes file of two SNPs and three individuals follows.
+\begin{verbatim}
+rs1, A, T, 0.02, 0.80, 1.50
+rs2, G, C, 0.98, 0.04, 1.00
+\end{verbatim}
+To feed mean genotype file to \bimbam, one need to use {\tt -gmode 1} in addition to {\tt -g}.
+
+%An additional output file {\tt prefix.genotype.distribution.txt} will be produced by the {\tt -wgd} option.
+\subsection{Genotype distribution file format}
+This file is similar to the mean genotype file. The first three columns are identical to those of the mean genotype file. The only difference is that each SNP represented by two adjacent columns instead of one.  The first of the two columns denotes the posterior probability of SNP being $0$ and the second column for probability being $1$.  An example of genotype distribution file of two SNPs and three individuals follows.
+
+\begin{verbatim}
+rs1, A, T, 0.98, 0.01, 0.60, 0.38, 0.90, 0.06
+rs2, G, C, 0.80, 0.14, 1.00, 0.00, 0.55, 0.20
+\end{verbatim}
+To feed genotype distribution file to \bimbam, one need to use {\tt -gmode 2} in addition to {\tt -g}.
+
+
+
+\subsection{Non-genotype input file format}
+\bimbam can take non-genotype input files, for example, microarray intensity data. The input files should be prepared in the same format as mean genotype files described above. Users should put the first three column in with arbitrary SNP ID and allele codings using ACGT.
+
+In addition to {\tt -gmode 1} and {\tt -g}, one need to use {\tt --notsnp}, otherwise, \bimbam will exclude report covariates that has out of range allele frequency.  
+%Here is an example.
+%\begin{verbatim}
+%./bimbam -gmode 1 -g microarray.dat -p pheno.txt -o test --notsnp
+%\end{verbatim}
+
+
+\subsection{Phenotype file format}
+In the phenotype input file, each line is a number indicating the phenotype value for each individual in turn, in the same order as in the Genotype file.
+Missing phenotypes should be denoted as NA. The number of lines should be equal to the number of individuals in genotype file ($N$), otherwise the program will either throw away the values after $N$ or append ``NA" at the end to observe $N$ values. In either case, a warning will be printed.
+
+Example Phenotype file with 5 individuals:
+
+\begin{verbatim}
+1.2
+NA
+2.7
+-0.2
+3.3
+\end{verbatim}
+If the phenotypes are binary (e.g.~in a case-control study) then the format is the same, but each entry should be 0, 1 or NA. It does not matter which group is denoted 0 and which denoted 1.
+
+\subsection{Multiple phenotype file format}
+One can include multiple phenotype in a phenotype file, with each column corresponds to one phenotype, and each row corresponds to an individual. This feature comes handy for microarray expression data when there are many phenotypes. This multiple phenotype feature is only acceptable for single SNP Bayes factor calculations.  For this to work, users use {\tt -f} option to specify the number of phenotypes. 
+Example Phenotype file with 5 individuals each with 3 phenotypes: 
+ \begin{verbatim}
+1.2   -0.3   -1.5
+NA     1.5    0.3 
+2.7    1.1    NA
+-0.2  -0.7    0.8
+3.3    2.4    2.1
+\end{verbatim}
+Note, however, one can not mix the quantitative phenotypes with binary phenotypes in a single file unless one wants to treat binary phenotype as quantitative. 
+ 
+
+
+\subsection{SNP location file format}
+
+The file contains two, or three, columns, with the first column being the SNP name, and the second column being its physical location.
+The optional but highly recommended third column should contain chromosome number of the SNPs.
+Note, it is OK if the rows are not ordered according to position, but the file must contain all the SNPs in the genotype files.
+If the genotype files contain SNPs across different chromosome, \bimbam will sort SNPs based on its chromosome and position.
+
+Example file:
+
+\begin{verbatim}
+rs1, 1200,  1
+rs2, 1000,  1
+rs3, 3320,  1
+rs4, 5430,  1
+\end{verbatim}
+Note: This file is strictly needed only if the order of the SNPs in the genotype file is not the same as the order of their physical locations along the chromosome, or if multiple genotype and phenotype files are used (see below).
+
+%If there is no -gene option in use, \bimbam cares only about the ranks of the positions, and not their actual values, otherwise, use of this file with actual
+%physical locations is required.
+
+
+\subsection{Use of multiple genotype and phenotype files}
+
+In some cases it may be convenient to provide genotypes (and corresponding phenotypes) in multiple files. For example, in a genome-wide study, it may be helpful to have one genotype file containing the HapMap data, and a second genotype file containing the study data. Or, in a candidate gene study where resequencing data are available for a panel of individuals as well as tag-SNP data are available for a study sample, it may be convenient to provide one genotype file for the panel and a second for the tag-SNP data. \bimbam allows for this use of multiple input files. When using multiple genotype files \bimbam does not require that the same SNPs be present in both files (although if the same SNP is present in both files then the SNP identifier should be the same in both files, to convey this information). However, to allow for this flexibility, when using multiple genotype files a SNP location file {\it must} be provided to specify the locations of the SNPs.
+
+When using multiple genotype files, the user must also provide multiple phenotype files, with each phenotype file corresponding to the individuals in a genotype file. The exception to this is that, if all the individuals in a genotype file have no phenotype data available (as might be the case if the genotypes are from the HapMap individuals for example) then this can be specified using {\tt -p 0}. The phenotype
+files must be specified in the same order as the genotype files to which they correspond.
+
+\subsubsection{The strand issue}
+
+When merging genotypes from different studies, there arises the issue of whether or not the genotypes for a SNP were obtained on the same strand.
+In some cases this can be checked easily: for example, if a SNP in one study is A/G, and in the other is T/C, we infer that  the two studies used
+different strands, and we can flip one of the SNPs to correct this. \bimbam performs these kinds of flip automatically.
+However, if a SNP is A/T, or C/G, one cannot tell whether the strandedness is the same or different across studies
+without external information.  
+Currently \bimbam assumes that genotypes  for a single SNP in multiple input files refer to the same strand.
+
+Note: if genotypes at a SNP are not compatible with the SNP being bi-allelic, even after strand flips, then the SNP is considered to be ``bad" and \bimbam will make all the genotypes of that SNP missing.     
+%Currently \bimbam searches for such SNPs, and matches them across studies by forcing the major
+%(most common) allele to be the same in all studies. This solution is not optimal, and we intend that it will be improved in future releases. (The data we
+%ourselves have been most active in analysing involves genotypes obtained from the Illumina 317k chip, which does not include
+%any A/T or C/G SNPs, and so this problem does not arise).
+
+
+\section {Running \bimbam: imputation and EM}
+
+Some general comments: 
+\begin{enumerate}
+\item \bimbam is a command line based program. The command should be typed in a terminal window, in the directory in which bimbam executable exists.
+%\item The user may find the supplied html file, {\tt comgen.html}, helpful to generate command lines.
+%Simply load this file into your browser (e.g. by double-clicking it in most systems), fill in the appropriate
+%boxes, and click "Generate". This will generate a command line which can be cut and paste
+%into a terminal window.
+\item The command line should be all on one line: the line-break in the example is only because the line is too large to fit on one page.
+\item Unless otherwise stated, the ``options" ({\tt -g -p -pos -o}, etc.) are all case-sensitive.
+\end{enumerate}
+
+Imputation usually involves two genotype input files: panel and cohort. Here panel refer to the densely genotyped individuals, e.g. HapMap, 1000 Genomes.  A link to files containing panel data, in \bimbam format, will be updated on the \bimbam website.
+
+\begin{verbatim}
+./bimbam -g input/panel.txt -p 0 -g input/cohort.txt -p input/pheno.txt -pos 
+   input/pos.txt  -e 10 -w 20 -s 1 -c 15 --nobf  -o pref -wgd -wmg
+\end{verbatim}
+Numeric $0$ after -p denotes the matching genotype file is panel. This command  line asks \bimbam to run EM 10 times, each EM runs $20$ steps on panel data alone, and additional $1$ step on cohort data. The number of cluster is $15$, at the end of the run do not compute Bayes factors. After imputation, output both genotype distribution and mean genotype files, the name of output files start with pref.   
+
+One can also perform imputation without panel, when only the LD of the cohort is used to infer the missing genotypes. Note this is not recommended.   
+\begin{verbatim}
+./bimbam -g input/cohort.txt -p input/pheno.txt   -e 10 -s 20 -c 15 
+           --nobf  -o pref  -wmg
+\end{verbatim}
+This command line asks \bimbam to run EM $10$ times, each EM run 20 steps. After imputation, output mean genotypes.
+
+\subsection{Saving results from EM runs}
+%One of the more time-consuming aspects of running \bimbam with imputation is the initial fitting
+%of the model used to perform imputation. This fitting is performed using the EM algorithm.
+%To save time in future runs the results of this fitting can be stored in a file, using the {\tt -sem} option. %The file used to store the results will be called {\tt output/prefix.em}.
+
+One can save EM results ({\tt -sem}) and reuse it later with {\tt -rem}, followed by the
+the name of the file used to store the EM results.
+%To restore the results of a previous EM run, use the {\tt -rem} option, 
+For example:
+\begin{verbatim}
+./bimbam -g input/cohort.txt -p input/pheno.txt -g input/panel.txt -p 0 
+    -pos input/pos.txt -o pref1 -sem -i 1
+
+./bimbam -g input/cohort.txt -p input/pheno.txt -g input/panel.txt -p 0 
+    -pos input/pos.txt -o pref2  -rem output/pref1.em -i 1000
+\end{verbatim}
+The first command line ask bimbam to save EM results, which produce a {\tt pref1.em} file in the {\tt output} directory. The second command line use this EM results to perform important sampling. 
+
+Notes:
+\begin{itemize}
+\item When restoring the results of an EM run, the genotype file used must be the same as that
+used when the results were saved.
+%\item The use of {\tt -sem} with the {\tt -gene} option is not recommended.
+\item When using {\tt -rem} the user can request further EM iterations to be performed, starting
+from the saved parameter values, by using the {\tt -s} option. (E.g.~{\tt -s 5} would perform an additional
+5 iterations for each EM run).
+\item We do not recommend to use {\tt -sem -rem} anymore, one should save the mean genotype and/or genotype distribution files. 
+\end{itemize}
+
+
+\section{Running \bimbam: computing Bayes factors and p-values}
+%The simplest way to run \bimbam is to supply a single genotype file , a phenotype file, and optionally a position file.
+In the software package there are examples files in the {\tt input} directory. 
+%of these ({\tt test.geno.txt}, {\tt test.pheno.txt}, and {\tt test.pos.txt}) are included in the distribution in the {\tt input} subdirectory.
+\subsection{Calculation of Single-SNP BFs}
+%To run \bimbam on these files, use
+Here is an example to compute single-SNP Bayes factor: 
+\begin{verbatim}
+./bimbam -g input/cohort.txt -p input/pheno.txt -pos input/pos.txt -o pref3
+\end{verbatim}
+This command line ask \bimbam to compute single-SNP Bayes factors using exact genotypes, ignoring the individuals with missing genotypes or phenotypes. 
+
+
+%There are three main options that the user may wish to add to the above command line. One is to perform multi-SNP analyses allowing for multiple causal variants; another is to use imputation to perform BF computations (e.g.~for SNPs that were not typed in the study sample); the final one is to use the BFs to compute $p$ values
+%(by permutation).
+%These are not performed by default: the user must specifically ask for them to be performed as described below.
+
+%Our suggestion is that for genome-wide association studies you might begin by running \bimbam, either with or without imputation,
+%but using only single-SNP analyses, and then follow-up interesting regions and genes (of size of the order of 100kb) with multi-SNP analyses.
+
+
+\subsection {Calculation of multi-SNP BFs}
+
+%By default \bimbam will compute only the single-SNP BFs. 
+The {\tt -l} option can be used to instruct \bimbam
+to compute multi-SNP BFs for all subsets of up to $L$ SNPs, where $L$ is user-defined. 
+%These multi-SNP
+%BFs allow
+%one to assess the evidence for multiple SNPs affecting phenotype (currently assuming effects
+%ombine additively across SNPs, with no interactions).
+For example: 
+\begin{verbatim}
+./bimbam -g input/cohort.txt -p input/pheno.txt -pos input/pos.txt -o pref4 -l 3
+\end{verbatim}
+This command line ask \bimbam to compute multi-SNP BFs for all subsets of size 1, 2 and 3 SNPs (i.e. $L=3$).  Since \bimbam looks at {\it all} subsets of size up to $L$ in the multi-SNP BF calculation, this option can be computationally very intensive.
+We suggest initially using $L=2$, and, if the results seem interesting, increasing $L$ to 3 or 4. 
+%(See also the {\tt -m} option below to restrict the exhaustive search to only those SNPs with a high single-SNP BF.)
+
+
+\subsection{Calculation of imputation-based BFs}
+
+%By default \bimbam does not perform imputation: it computes the single-SNP and multi-SNP BFs using only those individuals
+%with phenotype data and complete genotype data for the relevant SNPs. To perform imputation, the user must use
+%the {\tt -i} option, as we now describe.
+
+A natural way to compute imputation based BFs is to perform imputation first, then feed either imputed mean genotype file or imputed genotype distribution file to \bimbam to compute Bayes factors.  
+\bimbam provides an integrated approach to perform imputation and computing Bayes factors,  either using mean genotype, or sampling genotypes based on genotype distributions.  
+Both of which are invoked using the {\tt -i} option.
+
+The recommended approach, which is invoked by {\tt -i 1}, involves estimating the genotype of each individual by the posterior mean, and then computing a BF for each SNP as if this single estimate were in fact the observed genotype. This approach ignores the uncertainty in the estimated genotype, but it is fast, and in simulation experiments provides results very similar to the conventional approach of averaging over multiple imputations \cite{guan.stephens.08}. For example,
+\begin{verbatim}
+./bimbam -g input/cohort.txt -p input/pheno.txt  -g input/panel.txt -p 0  
+            -pos input/pos.txt  -o pref5 -i 1 -wmg
+\end{verbatim}
+Note the {\tt -p 0} option to include a ``panel" of individuals for whom no phenotype data are available. The above command line also save the imputed mean genotypes, which is highly recommended. 
+
+
+If the user prefers to compute BFs by averaging over multiple imputations, this can be achieved by specifying the number of imputations after the {\tt -i}. 
+However, although this was default behavior in an early release of this software, we no longer recommend this as it is not only very time consuming but, unless the number of imputations is very large, there is a risk that the results may actually  be worse than using {\tt -i 1}.   
+
+
+
+\subsection{P-value calculation: {\tt -pval} option}
+
+\bimbam can compute $p$ values assessing the ``significance" of observed BFs (see \citeauthor{servin.stephens.07}, \citeyear{servin.stephens.07}).
+To invoke this feature, use the {\tt -pval} option, followed by the number of permutations to use.
+For example,
+\begin{verbatim}
+./bimbam -g input/cohort.txt -p input/pheno.txt -o pref6 -pval 10000
+\end{verbatim}
+This command line will compute p-values for each SNP (being the proportion of permutations whose single-SNP BFs for that SNP exceeds that of the observed data) using 10000 random permutations of phenotype.
+\bimbam will compute a $p$-value for the region (being the
+proportion of permutations whose sum of BF exceeds that of the observed data) as well. 
+
+{\bf Note:} $p$-value calculations can be very slow, since it multiplies
+BF calculation times by the number of permutations used (partly because we have not yet taken the smart approach of limiting the number of permutations used for non-significant $p$ values). To speed calculation of $p$ values, $\bimbam$ computes BFs using
+a single prior pair  $\sigma_a= 0.2, \sigma_d= 0.05$, and expected genotypes, as in the {\tt -i 1} option described above.
+
+
+\subsection{Specify priors on genetic effects: the {\tt -A -D} options}
+\bimbam allows user to specify priors for additive effects and dominant effects, or more specifically, to specify values for $\sigma_a$ and $\sigma_d$ (see Servin and Stephens). The {\tt -A} and {\tt -D} must be used in pair, and \bimbam allow multiple usage of {\tt -A -D}, in which case, reported BFs are averages of all prior pairs.  For example, to compute BFs by averaging over $(\sigma_a, \sigma_d) = (0.2, 0.1)$ and $(0.1, 0.05)$, one would use
+\begin{verbatim}
+./bimbam -g input/cohort.txt -p input/pheno.txt -o pref7 -A 0.2 -D 0.05 -A 0.4 -D 0.1
+\end{verbatim}
+Users are invited to investigate how different $\sigma_a$ and $\sigma_d$ affect the Bayes factors. If user chooses not to use {\tt -A -D} options, default values for $\sigma_a, \sigma_d$ will be used in BF calculations.
+
+\subsection{Combining studies: the {\tt -ssd -psd} options}
+
+In some settings, it may be desirable to combine results for multiple studies without sharing individual level genotype and phenotype data. \bimbam facilitate this by inputting and outputting summary level data that can be shared among investigators and used to perform combined analyses.
+
+To accomplish this, each investigator should first run \bimbam on their own data using {\tt -psd } option to produce a summary data file.
+Note if -psd option follow by a string, then the generated SNP summary file will have the string as its name, otherwise, a default name
+{\tt prefix.ssd} will be used.
+For example, to produce a summary data file with the name ``test.ssd.txt" use:
+\begin{verbatim}
+./bimbam -g input/cohort.txt -p input/pheno.txt -o pref8 -psd test.ssd.txt
+\end{verbatim}
+
+Results from multiple studies can then be combined by running \bimbam on summary data files. For example, to combine analysis of two studies whose summary data files are test.ssd.1.txt and test.ssd.2.txt, use:   
+\begin{verbatim}
+./bimbam -ssd input/test1.ssd -ssd input/test2.ssd -o test
+\end{verbatim}
+The file format for the summary data file output by {\tt -psd} and input by {\tt -ssd} is as follows:
+\begin{verbatim}
+SNP A1 A2 STRAND ni sg sg2 sgd sd sy sy2 syg syd
+rs1162 A G NA 661 550.00 790.00 310.00 310.00 331.00 331.00 319.00 165.00
+rs3764 A G NA 662 432.00 566.00 298.00 298.00 331.00 331.00 253.00 161.00
+rs1750 C T NA 557 235.00 323.00 147.00 147.00 287.00 287.00 150.00 92.00
+rs2215 G A NA 661 276.00 326.00 226.00 226.00 331.00 331.00 117.00 99.00
+rs4690 A G NA 662 308.00 384.00 232.00 232.00 331.00 331.00 184.00 136.00
+rs1447 C G NA 655 619.00 925.00 313.00 313.00 329.00 329.00 338.00 166.00
+\end{verbatim}
+Each SNP is summarized in a row. The first four columns are SNP id, minor and major allele, and strand information (not in use for the moment). Suppose $g_i, y_i$ are genotype and phenotype of individual $i$ respectively, let $d_i = Pr(g_i=1)$. From the fifth column on, ni = number of individuals, $sg = \sum{g_i}$, $sg2=\sum{g_i^2}$, $sgd=\sum{g_i d_i}$, $sd=\sum{d_i}$, $sy=\sum{y_i}$, $sy2=\sum{y_i^2}$, $syg=\sum{y_i g_i}$, $syd=\sum{y_i d_i}$.   
+
+Notes:
+\begin{enumerate}
+\item There are many things to worry about when combining data across studies. e.g.,~differential recruitment criteria, or systematic DNA genotyping biases. \bimbam simply analyses all the data as if it came from a single study, so care is required when preparing input files (e.g.~phenotype definition) and interpreting results.  
+
+\item The information in the SNP summary data file is essentially equivalent to the within genotype class counts, phenotype means and variances (see \citeauthor{guan.stephens.08},\citeyear{guan.stephens.08}). 
+\end{enumerate}
+
+\subsection{Binary (0/1) hhenotype: the {\tt -cc} option}
+
+For binary (case-control) phenotypes, BFs can be calculated with the {\tt -cc} option.
+For example,
+\begin{verbatim}
+./bimbam -g input/cohort.txt -p input/pheno.cc -o pref  -cc 
+
+./bimbam -gmode 1 -g case_mgt.txt -p 1 -g ctrl_mgt.txt -p z -pos pos.txt
+                  -o pref  -A 0.2 -D 0.05 -cc  
+\end{verbatim}
+The first example, pheno.cc contain binary phenotype. In the second example, 
+the {\tt -p 1} assign all individuals in the matching genotype (case\_mgt.txt in the example) as 1, and {\tt -p z} assign all individuals in the matching genotype (ctrl\_mgt.txt in the example) as 0. Recall {\tt -p 0} denotes the matching genotypes are panel.    
+
+Note with {\tt -cc} option BFs are calculated under a logistic regression  model, using a Laplace approximation to perform the necessary integration. This is slower than the analytic  calculations that can be performed for quantitative phenotypes.
+In preliminary investigations we have found that treating binary phenotype as quantitative phenotype gives similar results
+(i.e., with a binary phenotype, the BFs obtained with {\tt -cc} option are similar to without {\tt -cc}). Since the calculations are faster for quantitative phenotypes, a sensible strategy may be to initially
+perform analyses treating the 0/1 phenotypes as quantitative, and then to follow up
+interesting regions using the {\tt -cc} option.
+
+
+
+
+\section{Output files } \label{output}
+
+\bimbam will create output files in a directory names {\tt output/}. (If this directory does not exist then it will be created.)  Output files will be produced, each with a name beginning with ``prefix" that was specified by the {\tt -o} option. We now describe the contents of these output files.
+
+\subsection{Log file: {\tt prefix.log}}
+A log file includes details of the run parameters used and any warnings generated.
+When sending in a bug report, it is important to include the log file as an attachment. 
+
+\subsection{Single-SNP Bayes factors: {\tt prefix.single.txt}}
+
+This output file contain $10$ columns. The first column contains the SNP identifier. The second column contains the physical location of the SNP
+(or the physical order along the chromosome, if no SNP location file is specified). The third column contains which chromosome the SNP is in. The fourth column is $\log_{10}$ of the single-SNP Bayes factors (averaged over imputations, where these are performed).
+The fifth column contains the $\log_{10}$ of the standard error of these BFs
+across the imputations (unless multiple imputation is used, this column is set to {\tt NA}). The sixth column contains the rank of the SNP
+among all single SNP BFs, if {\tt -sort } is used, otherwise, this column is the physical order along the chromome.   The seventh column is p-value for each SNP obtained from the permutation test. (If the {\tt -pval} option is used, otherwise this column becomes {\tt NA}.)
+The last three columns contain posterior mean of coefficients in Bayesian regression.
+By default, the rows of these file are sorted according to SNP physical location. To sort by the single-SNP BF values (i.e. highest BF first), use {\tt -sort} when running \bimbam.
+
+If importance sampling are performed, it is important to check that the standard error
+of the BFs is small enough that the estimated BFs are reliable.
+If a SNP has a high BF in the second column, but also a high standard error in the third column,
+then the high BF may be due to inadequate iterations in the imputation step, and the program should be rerun with more imputations.
+As a rough guide, we suggest performing more imputations
+if the $\log_{10}$ standard error (fifth column) is larger than (fourth column-1).
+
+\subsection{Single-SNP Bayes factors for binary phenotype}
+When {\tt -cc} option is used to compute single SNP BFs for binary phenotype, the {\tt prefix.single.txt} changes slightly in that it no longer contains the parameter estimates for $\mu, a, d$.
+
+\subsection{Single-SNP Bayes factors for multiple phenotypes}
+When {\tt -f} option is used to compute single SNP BFs for many phenotypes, the {\tt prefix.single.txt}  changes. Suppose there are $3$ phenotypes, the output file will contain $5 (3+2)$ columns with each row is a SNP. The first column is the SNP ID and the second columns is the SNP location, the rest of the columns are $\log_{10}$BFs of the single SNP BFs for each phenotype.  
+
+
+\subsection{Multi-SNP Bayes factors: {\tt prefix.multi.txt}}
+
+This file is produced only if the user asks for multi-SNP BFs to be computed (see the {\tt -l} option above).  In this file, each SNP is identified
+by its rank in the single-SNP BF calculations (the 6th column in the single-SNP output file) when {\tt -sort} were used, by default this column is the order of SNP physical location.  To make description easier, we use an example output file obtained with the {\tt -l 4} option, which means we calculate up to $4$ SNPs combinations.  
+
+\begin{verbatim}
+bf       se        snp1    snp2    snp3    snp4
++6.214   +5.207       1      NA      NA      NA
++7.842   +5.734       1      2       NA      NA
+......
++0.031   -2.802       16     18      19      20
+\end{verbatim}
+
+In each row, the first column gives a $\log_{10}$ multi-SNP BF, the second column gives a $\log_{10}$ standard error (NA if not available), and remaining columns identify the combination of SNPs that give rise to that BF.
+For example,
+\begin{verbatim}
++7.842   +5.734       1       2       NA      NA
+\end{verbatim}
+means that the model with SNPs 1 and 2 having non-zero effect on phenotype has
+a BF of $10^{7.842}$ compared with the null model of no SNPs having an effect.
+
+Interpreting the results of this file will typically require post-processing (e.g. in R).
+Some helpful R functions for visualising the results of this file will be made available from the \bimbam resources site,
+accessible from \url{http://stephenslab.uchicago.edu/software.html}.
+
+\subsection{Summary of results: {\tt prefix.summary.txt}}
+
+This file starts by giving the ($\log_{10}$ of the) overall BF for association between genetic variants in the region
+and the phenotype, and, if requested, a corresponding permutation-based $p$ value.
+These should be considered as measures of the evidence against the ``global" null hypothesis
+that there is no association between genetic variation in the region and phenotype; as such they
+probably only really make sense in a candidate gene study where this might be considered a sensible null.
+
+Note: The overall BF is computed assuming that, under the alternative hypothesis,
+the prior on the number of SNPs $p(l) \propto 0.5^l$ for $l=1,\dots,L$. If $L=1$ then
+this is the overall BF computed in the power studies from \cite{servin.stephens.07}, which
+should be consulted for more details.
+
+The remainder of the file concentrates on summarising the evidence for {\it which} variants
+in the region are associate with phenotype, assuming that the global null is false. So the remainder
+of the file is generally of interest only if the evidence against the global null is non-negligible.
+
+%It contains the following information, which essentially summarises the results in the {\tt prefix.multi.txt} file described above.
+\begin{itemize}
+\item The $\log_{10}$(BF) values for $l$-SNP models, and the posterior probabilities of $l$
+under the prior specified above (conditional on $l>0$). These should be viewed as
+helping to indicate whether there is evidence for multiple
+SNPs affecting phenotype in the region.
+\item A matrix containing 1-SNP and 2-SNP $\log_{10}$(BF) values for the top $M$ SNPs, in order of
+their physical location. (So the $i,j$th entry gives the $\log_{10}(BF)$ for the pair of SNPs labelled $i$ and $j$
+in the {\tt multi} file; the diagonal entries give the single-SNP BFs).
+\item The corresonding matrix of posterior probabilities on 1-SNP and 2-SNP models, using the prior $p(l)$ above,
+conditional on $l\in \{1,2\}$.
+\end{itemize}
+
+The wordy lines start with \#\# to ease reading in the statistical package R.
+
+\subsection{Output for combined studies {\tt prefix.ssd-bf.txt}}
+The file contains two columns, the first column is the SNP ID and the second columns is the $\log_{10}(BF)$ of the combined study. 
+
+\section{Other options}
+
+
+\subsection{Restricting the multi-SNP calculations: the {\tt -m} option}
+
+To restrict multi-SNP calculations to only the $M$ SNPs with the largest single-SNP BFs,
+use the {\tt -m} option.
+
+Example: to compute BFs for all subsets of up to $L=5$ SNPs, among the $m=15$ SNPs with
+the highest single-SNP BFs,
+\begin{verbatim}
+./bimbam -g input/cohort.txt -p input/pheno.txt
+    -pos input/pos.txt -o test -l 5 -m 15
+\end{verbatim}
+
+\subsection{Restricting analyses to subsets of the data: the {\tt -gene} and {\tt-GF} option}
+
+In a large study (e.g.~a whole-genome scan) one may be iterested in analyzing some subsets
+of the data (e.g.~genes or candidate regions) in detail. \bimbam allows the user to specify a number
+of regions for analysis by providing a ``gene file". Each line of this file specifies a region to be analyzed,
+with the first column giving a name for the region, and subsequent columns giving the chromosome number,
+and the start and end positions:
+\begin{verbatim}
+genename1  chr_num1  start_pos1  end_pos1
+genename2  chr_num2  start_pos2  end_pos2
+...
+\end{verbatim}
+
+To use this option the user must supply a location file specifying a position for each SNP in the study.
+Currently the chromosome number is ignored, the regions in a gene file should all be on the same chromosome,
+and the user must ensure that the genotype data provided are on the same chromosome as the regions specified.
+
+This option is helpful for performing multi-SNP analyses, with or without imputation, of candidate genes (say) in a genome-wide study,
+without having to develop a separate input file for each candidate gene. When performing such analyses, it may be desirable to
+include all SNPs within some distance of the gene, rather than only in the gene itself. To do this, the {\tt -GF} option
+can be used to specify a length of flanking region to include (symmetric, upstream and downstream). This length is subtracted
+from the start position and added to the end position specified in the gene file.
+
+For example,
+\begin{verbatim}
+./bimbam -g input/cohort.txt -p input/pheno.txt -g input/panel.txt -p 0 -pos 
+   input/test.pos.txt -gene input/genefile.txt -GF 20000 -o test2.out -l 2 -i 1000
+\end{verbatim}
+would perform imputation-based multi-SNP (2-SNP) analysis of each gene in {\tt genefile.txt}, including 20kb upstream
+and downstream of each gene.
+
+
+
+
+
+%\subsection{Multiple phenotypes}
+
+%One may also gather multiple phenotypes into one column, with each column corresponding to one phenotype. Note one must specify number of phenotypes with -f option. For example, if there are 4 phenotypes but one use "-f 2" the only first two phenotypes (columns) will be processed. The default number of phenotype is 1. The advantage of being able input multiple phenotypes is that one can use the same EM results to do subsequent calculations. Although \bimbam provides another option to save and load EM results to achieve repeat use of EM results, one may still find being able to use multiple phenotype input handy.     
+
+%When there are multiple phenotypes, \bimbam pick the phenotype that has largest average BF across all SNP and produce the first $6$ columns. In the additional columns, \bimbam output $\log_{10}$ BFs and $\log_{10}$ standard errors of those SNPs, two columns for each phenotype, where phenotype are in the same order as phenotype input file.  The SNPs are in the increasing order of their locations.   
+
+
+
+%\subsection{   Default prior assumption}
+
+%In the Bayes factor calculations the prior is assumed to be an even mixture of four different prior pairs $(\sigma_a, \sigma_d)$ (Servin and Stephens, 2007) of $(0.05, 0.0125)$, $(0.1, 0.025$), $(0.2, 0.05)$, and $(0.4, 0.1)$, which is calculated in practice as the average of four Bayes factors (where each Bayes factors assumed one of the different prior pairs). For indirectly observed SNPs, imputations are made separately for each calculation.
+
+
+\subsection{Genotype data screening}
+
+Often it is desirable to exclude SNPs of small minor allele frequency and/or large missingness. \bimbam provides options {\tt -exclude-maf} and {\tt -exclude-miss} to accommodate such requirements. For example, if one wants to exclude SNPs whose MAF $< 0.01$ and missing proportion $> 0.10$ one may use  
+\begin{verbatim}
+./bimbam -g geno.txt -p pheno.txt -exclude-maf 0.01 -exclude-miss 0.10 -o test
+\end{verbatim}
+
+One may also choose to exclude certain SNPs by using option {\tt -exclude-nopos}. One can comment out certain SNP positions (by putting \# at the beginning of the corresponding lines in the position file), and those SNPs that has no position information will be excluded in the analysis if {\tt -exclude-nopos} is used.  
+
+
+%\subsection{Miscellaneous other options}
+%A summary of other available options (e.g.~controlling number of iterations in the EM algorithm; setting the
+%seed for the random number generator) can be obtained by using the {\tt -h} or {\tt -help} option:
+%
+%\begin{verbatim}
+%./bimbam -help
+%\end{verbatim}
+
+%\bibliographystyle{chicago}
+%\bibliography{bimbam-manual-ref}
+
+\begin{thebibliography}{}
+
+\bibitem[\protect\citeauthoryear{Barber, Mangravite, Hyde, Chasman, Smith,
+  McCarty, Li, Wilke, Rieder, Williams, Ridker, Chatterjee, Rotter, Nickerson,
+  Stephens, and Krauss}{Barber et~al.}{2010}]{barber.etal.10}
+Barber, M., L.~Mangravite, C.~Hyde, D.~Chasman, J.~Smith, C.~McCarty, X.~Li,
+  R.~Wilke, M.~Rieder, P.~Williams, P.~Ridker, A.~Chatterjee, J.~Rotter,
+  D.~Nickerson, M.~Stephens, and R.~Krauss (2010).
+\newblock Genome-wide association of lipid-lowering response to statins in
+  combined study populations.
+\newblock {\em PloS one\/}~{\em 5\/}(3).
+
+\bibitem[\protect\citeauthoryear{Guan and Stephens}{Guan and
+  Stephens}{2008}]{guan.stephens.08}
+Guan, Y. and M.~Stephens (2008, 12).
+\newblock Practical issues in imputation-based association mapping.
+\newblock {\em PLoS Genet\/}~{\em 4\/}(12), e1000279.
+
+\bibitem[\protect\citeauthoryear{Reiner, Barber, Guan, Ridker, Lange, Chasman,
+  Walston, Cooper, Jenny, Rieder, Durda, Smith, Novembre, Tracy, Rotter,
+  Stephens, Nickerson, and Krauss}{Reiner et~al.}{2008}]{reiner.etal.08}
+Reiner, A.~P., M.~J. Barber, Y.~Guan, P.~M. Ridker, L.~A. Lange, D.~I. Chasman,
+  J.~D. Walston, G.~M. Cooper, N.~S. Jenny, M.~J. Rieder, J.~P. Durda, J.~D.
+  Smith, J.~Novembre, R.~P. Tracy, J.~I. Rotter, M.~Stephens, D.~A. Nickerson,
+  and R.~M. Krauss (2008, May).
+\newblock Polymorphisms of the hnf1a gene encoding hepatocyte nuclear factor-1
+  alpha are associated with c-reactive protein.
+\newblock {\em Am J Hum Genet\/}~{\em 82\/}(5), 1193--1201.
+
+\bibitem[\protect\citeauthoryear{Scheet and Stephens}{Scheet and
+  Stephens}{2006}]{scheet.stephens.06}
+Scheet, P. and M.~Stephens (2006).
+\newblock A fast and flexible statistical model for large-scale population
+  genotype data: Applications to inferring missing genotypes and haplotypic
+  phase.
+\newblock {\em Am J Hum Genet\/}~{\em 78}, 629--644.
+
+\bibitem[\protect\citeauthoryear{Seaman and Richardson}{Seaman and
+  Richardson}{2004}]{seaman.richardson.04}
+Seaman, S.~R. and S.~Richardson (2004).
+\newblock Equivalence of prospective and retrospective models in the bayesian
+  analysis of case-control studies.
+\newblock {\em Biometrika\/}~{\em 91}, 15--25.
+
+\bibitem[\protect\citeauthoryear{Servin and Stephens}{Servin and
+  Stephens}{2007}]{servin.stephens.07}
+Servin, B. and M.~Stephens (2007).
+\newblock Efficient multipoint analysis of association studies: candidate
+  regions and quantitative traits.
+\newblock {\em PLoS Genetics\/}~{\em 3}.
+
+\end{thebibliography}
+
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Appendix A: Command line examples}
+\begin{itemize}
+\item {\sc Imputation}
+\begin{itemize}
+\item Imputation with panel. Here panel refer to the densely genotyped individuals, e.g. HapMap, 1000 Genomes.
+\begin{verbatim}
+./bimbam -g input/panel.txt -p 0 -g input/cohort.txt -p input/pheno.txt 
+   -pos input/pos.txt -e 10 -w 20 -s 1 -c 15 --nobf  -o pref -wgd -wmg
+\end{verbatim}
+Numeric $0$ after -p denotes the matching genotype file is panel. This command  line asks \bimbam to run EM 10 times, each EM runs $20$ steps on panel data alone, and additional $1$ step on cohort data. The number of cluster is $15$, at the end of the run do not compute Bayes factors. After imputation, output both genotype distribution and mean genotype files, the name of output files start with pref.   
+\item Imputation without panel.  
+\begin{verbatim}
+./bimbam -g input/cohort.txt -p input/pheno.txt -e 10 -s 20 -c 15 -o pref 
+        -wmg
+\end{verbatim}
+This command line asks \bimbam to run EM $10$ times, each EM run 20 steps. After imputation, output mean genotypes.
+\end{itemize}
+
+\item {\sc Single-SNP association}
+\begin{itemize}
+\item Compute single SNP Bayes factor.
+\begin{verbatim}
+./bimbam -g input/cohort.txt -p input/pheno.txt  -o pref -A 0.2 -D 0.05 
+         -A 0.4 -D 0.1
+\end{verbatim}
+This command line asks \bimbam to compute Bayes factors with two sets of priors and the output is the average of the Bayes factors obtained with two sets of priors.
+
+\begin{verbatim}
+./bimbam -gmode 1 -g input/mgt.txt -p input/pheno.txt  -o pref  
+\end{verbatim}
+This command line asks \bimbam to compute Bayes factors with default priors.  The input is the mean genotype.
+
+\item Binary phenotypes
+\begin{verbatim}
+./bimbam -gmode 1 -g case_mgt.txt -p 1 -g ctrl_mgt.txt -p z -pos pos.txt\
+                  -o pref  -A 0.2 -D 0.05 -cc  
+\end{verbatim}
+This command line asks \bimbam to compute Bayes factors with Laplace approximation. The '-p 1' assign all individuals in the matching genotype (case\_mgt.txt in the example) as 1, and '-p z' assign all individuals in the matching genotype (ctrl\_mgt.txt in the example) as 0. Recall '-p 0' denotes the matching genotypes are panel.    
+
+\item Compute p-values.
+\begin{verbatim}
+./bimbam -gmode 1 -g input/mgt.txt -p input/pheno.txt -o pref -pval 100000
+\end{verbatim}
+This command line asks \bimbam to compute single SNP Bayes factors, and compute p-values for each SNP via permuation phenotypes $100000$ times.  
+
+
+\item Importance sampling
+\begin{verbatim}
+./bimbam -g panel.txt -p 0 -g cohort.txt -p pheno.txt  -pos pos.txt 
+           -e 10 -w 20 -s 1 -c 15  -o pref -wgd -i 10000
+./bimbam -gmode 2 -g input/gdens.txt -p input/pheno.txt -i 10000 -o pref
+\end{verbatim}
+This first command line asks \bimbam impute, output genotype distribution, and compute single-SNP BFs by sampling genotypes $10000$ times.  Note if use '-i 1' then \bimbam use mean genotypes to compute Bayes factor without sampling. The second command line read in a genotype distribution file and do importance sampling. 
+\end{itemize}
+
+\item {\sc Multi-SNP sssociation}
+\begin{verbatim}
+./bimbam  -g input/cohort.txt -p input/pheno.txt  -o pref  -l 3   
+\end{verbatim}
+This command line asks \bimbam to compute all combinations of SNPs up to and include $3$ SNPs,  using default priors.
+
+\begin{verbatim}
+./bimbam -gmode 1 -g chr16.txt -p pheno.txt -pos chr16.pos -o pref  -l 3  \
+             -gene gene_file.txt -gf 50000   
+\end{verbatim}
+This command line asks \bimbam to compute all combinations of SNPs up to and include $3$ SNPs,   but only using SNPs that in the region (specified in gene\_file.txt) $\pm 50$kb.  The gene\_file.txt may contain multiple entries and \bimbam will compute those regions separately.
+
+\item {\sc Combine studies using SNP summary data}
+\begin{itemize}
+\item Produce SNP summary data.
+\begin{verbatim}
+./bimbam -g genotype.txt -p pheno.txt  -o pref1  -psd
+./bimbam -gmode 1 -g mgt.txt -p ph.txt  -o pref2  -psd  
+\end{verbatim}
+Both command lines generate SNP summary files, pref1.psd and pref2.psd.
+
+\item Use SNP summary data to compute single SNP Bayes factors (-ssd).
+\begin{verbatim}
+./bimbam -ssd pref1.psd -ssd pref2.psd -A 0.2 -D 0.05 -A 0.4 -D 0.1 \
+             -o combined
+\end{verbatim}
+This command line takes two SNP summary data and compute single SNP Bayes factors using two sets of priors.
+\end{itemize}
+
+\end{itemize}
+
+\def\arg{{\emph{arg}}}
+\def\num{{\emph{num}}}
+
+\newpage
+\section*{Appendix B: \bimbam Options}
+Unless otherwise stated, \arg implies the argument is a string, \num implies the argument is a number.
+{\sc File I/O related options:}
+\begin{itemize}
+\item -g \emph{arg} \hspace{.1in}   can use multiple times, must pair with -p.
+\item -p \emph{arg} \hspace{.1in}   can use multiple times, must pair with -g. \emph{arg} can be a file name; 0, which indicates
+   the pairing genotypes are panel;  z or 1, which indicates the pairing genotype individuals have phenotype 0 or 1.
+\item  -pos \emph{arg} \hspace{.1in}  can use multiple times. \emph{arg} is a file name.
+\item -f \num  \hspace{.1in}   specify number of phenotypes (columns in the phenotype files).
+\item -o \emph{arg}  \hspace{.1in}  \emph{arg} will be the prefix of all output files, the random seed will be used by default.
+\item -weg \num   \hspace{.1in}    write exact genotype, missing denote by NA.  0 (default value), when \bimbam write cohort genotype in numerical format;
+                 1,  when \bimbam write cohort genotype in bimbam format.
+\item -wmg  \num \hspace{.1in}     write mean genotype. 0 (default value), write cohort only; 1, write both panel and cohort.
+\item -wbg  \num \hspace{.1in}      write best guess genotype in ACGT+- format. 0 (default value), write cohort only; 1, write both panel and cohort.
+\item -wgd \num  \hspace{.1in}       write genotype distribution, pr(0), pr(1) for each genotype. 0 (default value), write cohort only; 1, write both panel and cohort.  
+\end{itemize}
+
+\noindent{\sc Bayes factor related options:}
+\begin{itemize}
+\item -a(A) \arg \hspace{.1in}          repeatable, specify priors for additive effect, must pair with -d.
+\item -d(D) \num   \hspace{.1in}       repeatable, specify priors for dominant effect, must pair with -a.
+\item -df  \num   \hspace{.1in}       1, additive effect model; 2 (default), additive and dominance effect model.  
+\item -pval  \num  \hspace{.1in}     calculate p-values via permuations.
+\item -sort \hspace{.1in} sort single SNP Bayes factors. 
+\item -cc      \hspace{.1in}         calc bf of logit regression on binary phenotype.
+\end{itemize}
+
+\noindent{\sc Multi-SNP related options:}
+\begin{itemize}
+\item -i \num \hspace{.1in}          specify number of samplings to compute BF via importance sampling.  
+                  0,  no imputation;  1, use mean genotype;  $>100$,  importance sampling.
+\item -m \num   \hspace{.1in}       specify number of SNPs for multiple SNP study. The default value is total number (n) of SNPs. If \num is smaller than n, then SNPs with high single SNP BF  will be used.
+\item -l \num  \hspace{.1in}        specify maximum number of SNPs in all combinations. It's l as in lambda.
+\item -gene \arg  \hspace{.1in}   to read gene file that specify regions of interests.
+\item -gf(GF) \num  \hspace{.1in}   pair with -gene to specify gene flanking region in kb.
+\end{itemize}
+
+\noindent {\sc Combine studies:}
+\begin{itemize}
+\item -psd \arg \hspace{.1in}  convert genotype and pheotype to summary statitics and save to a file.
+\item -ssd \arg  \hspace{.1in}  take (multiple) summary data and calculate BF after combining them.
+\end{itemize}
+
+\noindent{\sc EM related options:}
+\begin{itemize}
+\item -e(em) \num   \hspace{.1in}   specify number of EM runs, default 10.
+\item -w(warm) \num \hspace{.1in}   specify steps of warm up EM run, default 10.
+\item -s(step) \num  \hspace{.1in}  specify steps of each EM run, default 1.
+\item -c \num   \hspace{.1in}       specify number of clusters in EM algorithm, default 20.
+\item -r \num    \hspace{.1in}      specify random seed, system time by default.
+\item -sem \arg  \hspace{.1in}    to save EM results, if \arg is missing prefix.em will be used.
+\item -rem \arg  \hspace{.1in}   to read EM results.
+\end{itemize}
+
+\noindent {\sc Other options:}
+\begin{itemize}
+\item -v(ver) \hspace{.1in}         print version and citation
+\item -h(help) \hspace{.1in}         print this help
+\item -exclude-maf  \num \hspace{.1in}
+         exclude SNPs whose maf < \num, default 0.01.
+\item -exclude-miss \num \hspace{.1in}          exclude SNPs whose missing rate > \num, default 1.
+\item -exclude-nopos \num  \hspace{.1in}
+         exclude SNPs that has no position information, 1 = yes (default), 0 = no
+\item --notsnp \hspace{.1in} tell \bimbam to allow any numerical values as covariates.
+\item --nobf \hspace{.1in} tell \bimbam not to compute Bayes factors.
+\item --silence   \hspace{.1in}     no terminal output.
+\end{itemize}
+
+%\subsection{Interactive mode }
+
+%
+%As an alternative to the command line, for those who prefer,
+%\bimbam can also be run in "Interactive" mode, by running it with the {\tt -I} option:
+%\begin{verbatim}
+%./bimbam -I
+%\end{verbatim}
+
+%This will produce a prompt {\tt BIMBAM:\$}. Typing {\tt help} gives the following help message:
+%\begin{verbatim}
+%read:   read genotype and phenotype data. use read -help for more.
+% em:     run em and set up related parameters. use em -help for more.
+% bf:     calculate bf values. use bf -help for more.
+% set:    set and print parameter values. use set -help for more.
+% exit:   write log file and exit.
+%         support popular unix command. ls, man, top, etc...
+%\end{verbatim}
+
+%As noted above, each command has its own more detailed help.
+%In brief, {\tt read} performs file I/O; {\tt em} performs Expectation-Maximization; {\tt bf} performs single-SNP Bayes factor calculations, as well as $p$-value calculation through permutation; {\tt set} enables user to change and view current parameters settings.
+
+%The strength of interactive mode is that \bimbam keeps current results (EM runs, BF calculations ... etc.) so that one may play with the data to get some experience on how many EM runs and how many imputations needed to obtain reasonable standard error vs. mean of BFs. For example,
+%if one is unsatisfied with the standard error of the BFs, one can perform additional
+%imputations to reduce the standard error, without losing the work done so far.
+
+%\section{Parallel computing version (no longer supported in version 0.99)}
+%
+%\bimbam can take advantage of parallel computing, specifically the MPI package, to substantially reduce run-times.
+%If one have cluster access, the MPI \bimbam can speed up calculations dramatically, especially for large scale genome wide studies.
+%Even for a single computer, the MPI version of \bimbam can take advantage of multiple-core and multiple CPUs to speed up computations.
+%
+%To run the MPI version of BIMBAM, one needs first to install two freely-available packages: openMPI and the GSL (gnu scientific library).
+%If you are running \bimbam on a cluster, then contact the systems administrator to help with this.
+%If you are running \bimbam on a multi-core or multi-processor desktop, then you may be able to manage this yourself:
+%we give brief instructions, and encourage you to contact a local expert if you need further help.
+%
+%To install MPI:
+%\begin{itemize}
+%\item Download openMPI from \url{http://www.open-mpi.org/software/ompi/v1.2/}.
+%\item Build and install MPI libraries.
+% \begin{verbatim}
+%    shell$ gunzip -c openmpi-1.2.3.tar.gz | tar xf -
+%    shell$ cd openmpi-1.2.3
+%    shell$ ./configure --enable-static --prefix=/path/to/mpi/
+%    <...lots of output...>
+%    shell$ make all install
+%\end{verbatim}
+%Note if one doesn't supply -{-prefix} option in the ./configure line then MPI will be installed in {\tt /usr/local/} directory.
+%%after ./configure, try "make all -j 4" (four cores compiling simultaneously).
+%%then sudo make install.
+%\end{itemize}
+%
+%To install GSL:
+%\begin{enumerate}
+%\item Download the GSL from \url{ftp://ftp.gnu.org/gnu/gsl/}.
+%Scroll down to the bottom of the page to find the most recent version (at time of writing, this is v1.9).
+%\item Unzip and untar it as above. Then install using
+%\begin{verbatim}
+%./configure
+%make
+%sudo make install
+%\end{verbatim}
+%By default, the library will be installed in {\tt /usr/local/lib}.
+%
+%After installation of MPI and GSL, download \bimbam source code and unzip untar it.  Then one needs to make minor changes in the Makefile in the /src directory (not the simple one in mother directory of /src).  Here is what top part of Makefile look like.  
+%\begin{verbatim}
+%*****************************************************************   
+%#       user configuration
+%# set mpi = yes for the parallel version
+%MPI ?= yes
+%MPICC = /path/to/mpi/mpic++
+%#
+%# set debug = yes to debug
+%DEBUG ?= no
+%#
+%# set readline = yes for additional interactive feature
+%# note: you must set MPI ?= no to use interactive mode;
+%READLINE ?= no
+%#
+%# set impute = yes for mask/imputation feature
+%IMPUTE ?= no
+%#
+%# end user configuration;
+%#****************************************************************    
+%\end{verbatim}
+%\end{enumerate}
+%One needs to make sure the lines {\tt MPI ?= yes}, and {\tt MPICC = /path/to/mpi/mpic++} are correct.
+%If not make corresponding changes. To compile use
+%\begin{verbatim}
+%shell$ make clean
+%shell$ make
+%\end{verbatim}
+%
+%
+%If you are running \bimbam on a single multi-core or multi-processor desktop, then it is easy to run MPI executable: use
+%\begin{verbatim}
+% mpirun -np 8 ./bimbam ...
+%\end{verbatim}
+%where here {\tt -np} stands for number of processes, and we recommend to be set to the number of cores you wish \bimbam to use, although over-subscribe is possible.
+%
+%If you are running \bimbam on a cluster, then you will need to create a machine file to tell \bimbam which
+%machines to use. This specification is system-dependent, depending on use of {\tt qsub} and other issues:
+%contact your systems administrator for help.
+
+
+
+%\subsection{}
+
+\end{document}
+
+
+%@Article{reiner.etal.08,
+%author = "Reiner, A P and Barber, M J and Guan, Y and Ridker, P M and Lange, L A and Chasman, D I and Walston, J D and Cooper, G M and Jenny, N S and Rieder, M J and Durda, J P and Smith, J D and Novembre, J and Tracy, R P and Rotter, J I and Stephens, M and Nickerson, D A and Krauss, R M",
+%title = {Polymorphisms of the HNF1A gene encoding hepatocyte nuclear factor-1 alpha are associated with C-reactive protein},
+%journal = "Am J Hum Genet",
+%year = "2008",
+%volume = "82",
+%number = "5",
+%pages = "1193-1201",
+%month = "May",
+%pmid = "18439552",
+%url = "http://www.hubmed.org/display.cgi?uids=18439552",
+%doi = "10.1016/j.ajhg.2008.03.017"
+%}
+%
+%@article{seaman.richardson.04,
+%author="Seaman, S.~R. and Richardson,~S.",
+%title="Equivalence of Prospective and Retrospective Models in the Bayesian Analysis of Case-Control Studies",
+%year=2004,
+%journal="Biometrika",
+%volume=91,
+%pages="15--25"
+%}
+%
+%@article{barber.etal.10,
+%	Author = {Barber,MJ and Mangravite,LM and Hyde,CL and Chasman,DI and Smith,JD and McCarty,CA and Li,X and Wilke,RA and Rieder,MJ and Williams,PT and Ridker,PM and Chatterjee,A and Rotter,JI and Nickerson,DA and Stephens,M and Krauss,RM},
+%	Date = {2010//},
+%	Date-Added = {2010-10-21 13:14:13 -0500},
+%	Date-Modified = {2010-10-21 13:14:13 -0500},
+%	Journal = {PloS one},
+%	Journal1 = {PLoS One},
+%	Number = {3},
+%	Sp = {e9763},
+%	Title = {Genome-wide association of lipid-lowering response to statins in combined study populations.},
+%	Ty = {JOUR},
+%	Url = {http://ukpmc.ac.uk/abstract/MED/20339536},
+%	Volume = {5},
+%	Year = {2010},
+%}
+%
+%@article{guan.stephens.08,
+%    author = {Guan, Yongtao AND Stephens, Matthew},
+%    journal = {PLoS Genet},
+%    publisher = {Public Library of Science},
+%    title = {Practical Issues in Imputation-Based Association Mapping},
+%    year = {2008},
+%    month = {12},
+%    volume = {4},
+%    url = {http://dx.doi.org/10.1371%2Fjournal.pgen.1000279},
+%    pages = {e1000279},
+%    number = {12},
+%    doi = {10.1371/journal.pgen.1000279}
+%}        
+%
+%
+%@article{scheet.stephens.06,
+%    author="Scheet,~P. and Stephens,~M.",
+%    year= 2006,
+%    title="A Fast and Flexible Statistical Model for Large-Scale Population Genotype Data: Applications to Inferring Missing Genotypes and Haplotypic Phase",
+%    journal="Am J Hum Genet",
+%    volume= "78",
+%    pages="629--644"
+%    }
+%
+%@article{servin.stephens.07,
+%    author="Servin,~B. and Stephens,~M.",
+%    year= 2007,
+%    title="Efficient multipoint analysis of association studies: candidate regions and quantitative traits",
+%    journal="PLoS Genetics",
+%    volume= "3",
+%    url="http://dx.doi.org/10.1371%2Fjournal.pgen.0030114"
+%    }

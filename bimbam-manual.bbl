@@ -1,0 +1,52 @@
+\begin{thebibliography}{}
+
+\bibitem[\protect\citeauthoryear{Barber, Mangravite, Hyde, Chasman, Smith,
+  McCarty, Li, Wilke, Rieder, Williams, Ridker, Chatterjee, Rotter, Nickerson,
+  Stephens, and Krauss}{Barber et~al.}{2010}]{barber.etal.10}
+Barber, M., L.~Mangravite, C.~Hyde, D.~Chasman, J.~Smith, C.~McCarty, X.~Li,
+  R.~Wilke, M.~Rieder, P.~Williams, P.~Ridker, A.~Chatterjee, J.~Rotter,
+  D.~Nickerson, M.~Stephens, and R.~Krauss (2010).
+\newblock Genome-wide association of lipid-lowering response to statins in
+  combined study populations.
+\newblock {\em PloS one\/}~{\em 5\/}(3).
+
+\bibitem[\protect\citeauthoryear{Guan and Stephens}{Guan and
+  Stephens}{2008}]{guan.stephens.08}
+Guan, Y. and M.~Stephens (2008, 12).
+\newblock Practical issues in imputation-based association mapping.
+\newblock {\em PLoS Genet\/}~{\em 4\/}(12), e1000279.
+
+\bibitem[\protect\citeauthoryear{Reiner, Barber, Guan, Ridker, Lange, Chasman,
+  Walston, Cooper, Jenny, Rieder, Durda, Smith, Novembre, Tracy, Rotter,
+  Stephens, Nickerson, and Krauss}{Reiner et~al.}{2008}]{reiner.etal.08}
+Reiner, A.~P., M.~J. Barber, Y.~Guan, P.~M. Ridker, L.~A. Lange, D.~I. Chasman,
+  J.~D. Walston, G.~M. Cooper, N.~S. Jenny, M.~J. Rieder, J.~P. Durda, J.~D.
+  Smith, J.~Novembre, R.~P. Tracy, J.~I. Rotter, M.~Stephens, D.~A. Nickerson,
+  and R.~M. Krauss (2008, May).
+\newblock Polymorphisms of the hnf1a gene encoding hepatocyte nuclear factor-1
+  alpha are associated with c-reactive protein.
+\newblock {\em Am J Hum Genet\/}~{\em 82\/}(5), 1193--1201.
+
+\bibitem[\protect\citeauthoryear{Scheet and Stephens}{Scheet and
+  Stephens}{2006}]{scheet.stephens.06}
+Scheet, P. and M.~Stephens (2006).
+\newblock A fast and flexible statistical model for large-scale population
+  genotype data: Applications to inferring missing genotypes and haplotypic
+  phase.
+\newblock {\em Am J Hum Genet\/}~{\em 78}, 629--644.
+
+\bibitem[\protect\citeauthoryear{Seaman and Richardson}{Seaman and
+  Richardson}{2004}]{seaman.richardson.04}
+Seaman, S.~R. and S.~Richardson (2004).
+\newblock Equivalence of prospective and retrospective models in the bayesian
+  analysis of case-control studies.
+\newblock {\em Biometrika\/}~{\em 91}, 15--25.
+
+\bibitem[\protect\citeauthoryear{Servin and Stephens}{Servin and
+  Stephens}{2007}]{servin.stephens.07}
+Servin, B. and M.~Stephens (2007).
+\newblock Efficient multipoint analysis of association studies: candidate
+  regions and quantitative traits.
+\newblock {\em PLoS Genetics\/}~{\em 3}.
+
+\end{thebibliography}
